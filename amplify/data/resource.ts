@@ -9,8 +9,13 @@ specifies that any user authenticated via an API key can "create", "read",
 const schema = a.schema({
   Todo: a
     .model({
-      content: a.string(),
-    }).authorization(allow => [allow.owner()]),
+      title: a.string(),        // Campo para el título de la película
+      genero: a.string(),        // Campo para el tema de la película
+      year: a.string(),         // Campo para el año de la película
+      platform: a.string(),     // Campo para la plataforma de la película
+      isSeen: a.boolean()
+    })
+    .authorization(allow => [allow.owner()]),  // La regla de autorización
 });
 
 export type Schema = ClientSchema<typeof schema>;
