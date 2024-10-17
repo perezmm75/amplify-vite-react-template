@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.2.0",
+    "@cloudscape-design/components": "^3.0.791",
+    "@cloudscape-design/global-styles": "^1.0.32",
     "aws-amplify": "^6.5.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
