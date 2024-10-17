@@ -13,6 +13,7 @@ import Container from "@cloudscape-design/components/container";
 import FormField from "@cloudscape-design/components/form-field";
 import Input from "@cloudscape-design/components/input";
 import Select from "@cloudscape-design/components/select";
+import './App.css'; // Asegúrate de importar el CSS que creamos
 
 
 const client = generateClient<Schema>();
@@ -25,7 +26,7 @@ function App() {
   const [year, setYear] = useState("");
   const [platform, setPlatform] = useState("");
   const [tipo, setTipo] = useState("");
-  const [addedBy, setAddedBy] = useState("");
+  const [showForm, setShowForm] = useState(false); // Estado para mostrar/ocultar el formulario
 
   useEffect(() => {
     client.models.Todo.observeQuery().subscribe({
@@ -134,11 +135,14 @@ function App() {
         ]}
       />
 
-      {/* Formulario para añadir películas */}
-      <h1>Las mejores películas para ver</h1>
-      <h1>Usuario: {user?.signInDetails?.loginId}</h1>
+      {/* Botón para mostrar/ocultar el formulario */}
+      <Button onClick={() => setShowForm(!showForm)}>
+        {showForm ? "Ocultar formulario" : "Añadir película"}
+      </Button>
 
-      <Container header={<h2>Añadir Película</h2>}>
+      {/* Mostrar el formulario solo si showForm es true */}
+      {showForm && (
+        <Container className="form-container" header={<h2>Añadir Película</h2>}>
         <SpaceBetween direction="vertical" size="l">
           <FormField label="Tipo">
             <Select
@@ -204,11 +208,12 @@ function App() {
           </FormField>
 
           <Button onClick={createTodo} variant="primary">
-            Añadir Película
-          </Button>
-        </SpaceBetween>
-      </Container>
-
+              Añadir Película
+            </Button>
+          </SpaceBetween>
+        </Container>
+      )}
+      
       {/* Tabla de Cloudscape */}
       <Table
         columnDefinitions={[
@@ -275,7 +280,7 @@ function App() {
             </SpaceBetween>
           </Box>
         }
-        header={<Header>Películas guardadas</Header>}
+        header={<Header>Películas añadidas</Header>}
         pagination={<Pagination currentPageIndex={1} pagesCount={2} />}
       />
     </main>
