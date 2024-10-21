@@ -14,7 +14,7 @@ import FormField from "@cloudscape-design/components/form-field";
 import Input from "@cloudscape-design/components/input";
 import Select from "@cloudscape-design/components/select";
 import "./App.css"; // Asegúrate de importar el CSS que creamos
-
+import Favorites from "./pages/Favorites";
 const client = generateClient<Schema>();
 
 function App() {
@@ -351,6 +351,10 @@ function App() {
         header={<Header>Películas añadidas</Header>}
         pagination={<Pagination currentPageIndex={1} pagesCount={2} />}
       />
+      <Button onClick={() => setFavorites(!favorites)}>
+                  {favorites ? "Ocultar Favoritos" : "Mostrar Favoritos"}
+                </Button>
+                {Favorites && <Favorites />}
     </main>
   );
 }
