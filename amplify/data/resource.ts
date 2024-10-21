@@ -17,7 +17,8 @@ const schema = a.schema({
       isSeen: a.boolean(),
       addedBy: a.string(),
       likes: a.integer(),
-      voters: a.string()
+      voters: a.string(),
+      favorites: a.boolean()
 
     })
     .authorization(allow => [allow.authenticated().to(["read","update"]),

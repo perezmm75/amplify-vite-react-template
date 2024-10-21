@@ -64,6 +64,7 @@ function App() {
       platform,
       isSeen: false, // Establecer por defecto como no visto
       addedBy: user?.signInDetails?.loginId, // Guardar el usuario que añadió la película
+      favorites: false, // Establecer por defecto como no favorita
     });
 
     // Clear the fields after submission
@@ -86,13 +87,13 @@ function App() {
   async function voteMovie(id: string) {
     // Busca la película actual
     const todo = todos.find((item) => item.id === id);
-  
+
     // Si ya ha votado, mostramos una alerta y no permitimos votar nuevamente
     if (todo?.voters?.includes(user?.username)) {
       alert("Ya has votado por esta película.");
       return;
     }
-  
+
     // Si no ha votado, actualizamos los likes y añadimos al usuario a la lista de 'voters'
     const updatedLikes = (likes[id] || 0) + 1;
     await client.models.Todo.update({
@@ -100,11 +101,10 @@ function App() {
       likes: updatedLikes,
       voters: [...(todo?.voters || []), user?.username], // Añadir el usuario a la lista de votantes
     });
-  
+
     // Actualiza el estado de likes y votantes
     setLikes({ ...likes, [id]: updatedLikes });
   }
-  
 
   async function markAsView(id: string, isSeen: boolean) {
     await client.models.Todo.update({
@@ -117,6 +117,13 @@ function App() {
       signOut();
     }
   };
+
+  async function markAsFav(id: string, favorites: boolean) {
+    await client.models.Todo.update({
+      id,
+      favorites: !favorites,
+    });
+  }
 
   return (
     <main>
@@ -309,30 +316,23 @@ function App() {
             cell: (item) => item.addedBy,
           },
           {
-            id: "likes",
-            header: "Likes",
-            cell: (item) => likes[item.id] || 0,
-          },
-          {
             id: "actions",
             header: "Acciones",
             cell: (item) => (
               <>
-                <Button onClick={() => deleteTodo(item.id, item.addedBy)}>
-                  Eliminar
-                </Button>
-                <Button onClick={() => markAsView(item.id, item.isSeen)}>
-                  {item.isSeen ? "NO visto" : "Visto"}
-                </Button>
-                <Button onClick={() => addToFavorites(item.id)}>
-                  {favorites.includes(item.id)
-                    ? "Quitar de Favoritos"
-                    : "Añadir a Favoritos"}
-                </Button>
                 {/* Actualización del botón de Like */}
                 <Button onClick={() => voteMovie(item.id)}>
                   👍 Like ({likes[item.id] || 0}){" "}
                   {/* Mostrando el número de likes */}
+                </Button>
+                <Button onClick={() => markAsView(item.id, item.isSeen)}>
+                  {item.isSeen ? "NO visto" : "Visto"}
+                </Button>
+                <Button onClick={() => markAsFav(item.id, item.favorites)}>
+                  {item.favorites ? "DeleFav" : "AddFav"}
+                </Button>
+                <Button onClick={() => deleteTodo(item.id, item.addedBy)}>
+                  Eliminar
                 </Button>
               </>
             ),
