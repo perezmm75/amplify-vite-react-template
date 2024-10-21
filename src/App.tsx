@@ -13,8 +13,7 @@ import Container from "@cloudscape-design/components/container";
 import FormField from "@cloudscape-design/components/form-field";
 import Input from "@cloudscape-design/components/input";
 import Select from "@cloudscape-design/components/select";
-import './App.css'; // Asegúrate de importar el CSS que creamos
-
+import "./App.css"; // Asegúrate de importar el CSS que creamos
 
 const client = generateClient<Schema>();
 
@@ -27,20 +26,32 @@ function App() {
   const [platform, setPlatform] = useState("");
   const [tipo, setTipo] = useState("");
   const [showForm, setShowForm] = useState(false); // Estado para mostrar/ocultar el formulario
+  const [favorites, setFavorites] = useState<Array<string>>([]); // Para manejar la lista de favoritos
+  const [likes, setLikes] = useState<{ [key: string]: number }>({}); // Para manejar los likes de cada película
 
   useEffect(() => {
     client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
+      next: (data) => {
+        setTodos([...data.items]);
+        const initialLikes = data.items.reduce((acc, item) => {
+          acc[item.id] = item.likes || 0; // Inicializa los likes si no existen
+          return acc;
+        }, {});
+        setLikes(initialLikes);
+      },
     });
   }, []);
 
-  function deleteTodo(id: string) {
-    // Preguntar al usuario si está seguro de que desea eliminar la película
-    const confirmDelete = window.confirm(
-      "¿Estás seguro de que quieres eliminar esta película?"
-    );
-    if (confirmDelete) {
-      client.models.Todo.delete({ id });
+  function deleteTodo(id: string, addedBy: string) {
+    if (addedBy === user?.signInDetails?.loginId) {
+      const confirmDelete = window.confirm(
+        "¿Estás seguro de que quieres eliminar esta película?"
+      );
+      if (confirmDelete) {
+        client.models.Todo.delete({ id });
+      }
+    } else {
+      window.alert("No puedes borrar los títulos de otros usuarios");
     }
   }
 
@@ -63,10 +74,42 @@ function App() {
     setPlatform("");
   }
 
+  function addToFavorites(id: string) {
+    if (!favorites.includes(id)) {
+      setFavorites([...favorites, id]);
+    } else {
+      // Si ya está en favoritos, podemos eliminarla de la lista
+      setFavorites(favorites.filter((favId) => favId !== id));
+    }
+  }
+
+  async function voteMovie(id: string) {
+    // Busca la película actual
+    const todo = todos.find((item) => item.id === id);
+  
+    // Si ya ha votado, mostramos una alerta y no permitimos votar nuevamente
+    if (todo?.voters?.includes(user?.username)) {
+      alert("Ya has votado por esta película.");
+      return;
+    }
+  
+    // Si no ha votado, actualizamos los likes y añadimos al usuario a la lista de 'voters'
+    const updatedLikes = (likes[id] || 0) + 1;
+    await client.models.Todo.update({
+      id,
+      likes: updatedLikes,
+      voters: [...(todo?.voters || []), user?.username], // Añadir el usuario a la lista de votantes
+    });
+  
+    // Actualiza el estado de likes y votantes
+    setLikes({ ...likes, [id]: updatedLikes });
+  }
+  
+
   async function markAsView(id: string, isSeen: boolean) {
     await client.models.Todo.update({
       id,
-      isSeen: !isSeen
+      isSeen: !isSeen,
     });
   }
   const handleMenuClick = (item: any) => {
@@ -127,93 +170,101 @@ function App() {
             items: [
               { id: "profile", text: "Perfil" },
               { id: "preferences", text: "Preferencias" },
-              { id: "signout", text: "Cerrar sesión" }, 
+              { id: "signout", text: "Cerrar sesión" },
             ],
             onItemClick: handleMenuClick, // Manejador para acciones de los ítems del menú
-
           },
         ]}
       />
 
       {/* Botón para mostrar/ocultar el formulario */}
       <Button onClick={() => setShowForm(!showForm)}>
-        {showForm ? "Ocultar formulario" : "Añadir película"}
+        {showForm ? "Ocultar formulario" : "Mostrar formulario"}
       </Button>
 
       {/* Mostrar el formulario solo si showForm es true */}
       {showForm && (
         <Container className="form-container" header={<h2>Añadir Película</h2>}>
-        <SpaceBetween direction="vertical" size="l">
-          <FormField label="Tipo">
-            <Select
-              selectedOption={{ label: tipo || "Selecciona tipo", value: tipo }}
-              onChange={(e) => setTipo(e.detail.selectedOption.value)}
-              options={[
-                { label: "Película", value: "Pelicula" },
-                { label: "Serie", value: "Serie" },
-                { label: "Documental", value: "Documental" },
-              ]}
-            />
-          </FormField>
+          <SpaceBetween direction="vertical" size="l">
+            <FormField label="Tipo">
+              <Select
+                selectedOption={{
+                  label: tipo || "Selecciona tipo",
+                  value: tipo,
+                }}
+                onChange={(e) => setTipo(e.detail.selectedOption.value)}
+                options={[
+                  { label: "Película", value: "Pelicula" },
+                  { label: "Serie", value: "Serie" },
+                  { label: "Documental", value: "Documental" },
+                ]}
+              />
+            </FormField>
 
-          <FormField label="Título">
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.detail.value)}
-              placeholder="Título"
-            />
-          </FormField>
+            <FormField label="Título">
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.detail.value)}
+                placeholder="Título"
+              />
+            </FormField>
 
-          <FormField label="Género">
-            <Select
-              selectedOption={{ label: genero || "Selecciona un género", value: genero }}
-              onChange={(e) => setGenero(e.detail.selectedOption.value)}
-              options={[
-                { label: "Acción", value: "Acción" },
-                { label: "Aventura", value: "Aventura" },
-                { label: "Catastrofe", value: "Catastrofe" },
-                { label: "Ciencia Ficción", value: "Ciencia Ficción" },
-                { label: "Comedia", value: "Comedia" },
-                { label: "Drama", value: "Drama" },
-                { label: "Fantasía", value: "Fantasía" },
-                { label: "Musical", value: "Musical" },
-                { label: "Suspense", value: "Suspense" },
-                { label: "Terror", value: "Terror" },
-                { label: "Policiaca", value: "Policiaca" },
-              ]}
-            />
-          </FormField>
+            <FormField label="Género">
+              <Select
+                selectedOption={{
+                  label: genero || "Selecciona un género",
+                  value: genero,
+                }}
+                onChange={(e) => setGenero(e.detail.selectedOption.value)}
+                options={[
+                  { label: "Acción", value: "Acción" },
+                  { label: "Aventura", value: "Aventura" },
+                  { label: "Catastrofe", value: "Catastrofe" },
+                  { label: "Ciencia Ficción", value: "Ciencia Ficción" },
+                  { label: "Comedia", value: "Comedia" },
+                  { label: "Drama", value: "Drama" },
+                  { label: "Fantasía", value: "Fantasía" },
+                  { label: "Musical", value: "Musical" },
+                  { label: "Suspense", value: "Suspense" },
+                  { label: "Terror", value: "Terror" },
+                  { label: "Policiaca", value: "Policiaca" },
+                ]}
+              />
+            </FormField>
 
-          <FormField label="Año">
-            <Input
-              value={year}
-              onChange={(e) => setYear(e.detail.value)}
-              placeholder="Año"
-            />
-          </FormField>
+            <FormField label="Año">
+              <Input
+                value={year}
+                onChange={(e) => setYear(e.detail.value)}
+                placeholder="Año"
+              />
+            </FormField>
 
-          <FormField label="Plataforma">
-            <Select
-              selectedOption={{ label: platform || "Selecciona una plataforma", value: platform }}
-              onChange={(e) => setPlatform(e.detail.selectedOption.value)}
-              options={[
-                { label: "Netflix", value: "Netflix" },
-                { label: "Max", value: "Max" },
-                { label: "Amazon Prime", value: "Amazon Prime" },
-                { label: "Disney+", value: "Disney+" },
-                { label: "SkyShowtime", value: "SkyShowtime" },
-                { label: "AppleTV+", value: "AppleTV+" },
-              ]}
-            />
-          </FormField>
+            <FormField label="Plataforma">
+              <Select
+                selectedOption={{
+                  label: platform || "Selecciona una plataforma",
+                  value: platform,
+                }}
+                onChange={(e) => setPlatform(e.detail.selectedOption.value)}
+                options={[
+                  { label: "Netflix", value: "Netflix" },
+                  { label: "Max", value: "Max" },
+                  { label: "Amazon Prime", value: "Amazon Prime" },
+                  { label: "Disney+", value: "Disney+" },
+                  { label: "SkyShowtime", value: "SkyShowtime" },
+                  { label: "AppleTV+", value: "AppleTV+" },
+                ]}
+              />
+            </FormField>
 
-          <Button onClick={createTodo} variant="primary">
+            <Button onClick={createTodo} variant="primary">
               Añadir Película
             </Button>
           </SpaceBetween>
         </Container>
       )}
-      
+
       {/* Tabla de Cloudscape */}
       <Table
         columnDefinitions={[
@@ -258,13 +309,30 @@ function App() {
             cell: (item) => item.addedBy,
           },
           {
+            id: "likes",
+            header: "Likes",
+            cell: (item) => likes[item.id] || 0,
+          },
+          {
             id: "actions",
             header: "Acciones",
             cell: (item) => (
               <>
-                <Button onClick={() => deleteTodo(item.id)}>Eliminar</Button>
+                <Button onClick={() => deleteTodo(item.id, item.addedBy)}>
+                  Eliminar
+                </Button>
                 <Button onClick={() => markAsView(item.id, item.isSeen)}>
                   {item.isSeen ? "NO visto" : "Visto"}
+                </Button>
+                <Button onClick={() => addToFavorites(item.id)}>
+                  {favorites.includes(item.id)
+                    ? "Quitar de Favoritos"
+                    : "Añadir a Favoritos"}
+                </Button>
+                {/* Actualización del botón de Like */}
+                <Button onClick={() => voteMovie(item.id)}>
+                  👍 Like ({likes[item.id] || 0}){" "}
+                  {/* Mostrando el número de likes */}
                 </Button>
               </>
             ),

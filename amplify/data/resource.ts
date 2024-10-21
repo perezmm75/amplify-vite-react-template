@@ -15,9 +15,14 @@ const schema = a.schema({
       year: a.string(),         // Campo para el año de la película
       platform: a.string(),     // Campo para la plataforma de la película
       isSeen: a.boolean(),
-      addedBy: a.string()
+      addedBy: a.string(),
+      likes: a.integer(),
+      voters: a.string()
+
     })
-    .authorization(allow => [allow.owner()]),  // La regla de autorización
+    .authorization(allow => [allow.authenticated().to(["read","update"]),
+    allow.owner() // La regla de autorización
+  ])
 });
 
 export type Schema = ClientSchema<typeof schema>;
