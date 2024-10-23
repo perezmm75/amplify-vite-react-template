@@ -1,32 +1,3 @@
-/* Asegurarse de que el contenedor principal se ajuste a pantallas pequeñas */
-main {
-  max-width: 100%;
-  padding: 16px;
-  margin: 0 auto;
-}
-
-/* Hacer que el formulario se reorganice en pantallas pequeñas */
-@media screen and (max-width: 768px) {
-  .form-container {
-    flex-direction: column;
-  }
-
-  .form-container input, 
-  .form-container select, 
-  .form-container button {
-    width: 100%;
-    margin-bottom: 8px;
-  }
-}
-
-/* Para la tabla, puedes ocultar columnas en pantallas pequeñas */
-@media screen and (max-width: 768px) {
-  .table-column-header {
-    display: none; /* Opcional, depende de tus necesidades */
-  }
-
-  /* Asegurar que las celdas de la tabla se adapten */
-  .table-cell {
-    word-wrap: break-word;
-  }
+body {
+  margin: 0
 }
