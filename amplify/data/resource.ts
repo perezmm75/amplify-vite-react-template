@@ -9,29 +9,32 @@ specifies that any user authenticated via an API key can "create", "read",
 const schema = a.schema({
   Todo: a
     .model({
-      tipo: a.string(),         // Campo para establecer si es pelicula/serie/documental
-      title: a.string(),        // Campo para el título de la película
-      genero: a.string(),        // Campo para el tema de la película
-      year: a.string(),         // Campo para el año de la película
-      platform: a.string(),     // Campo para la plataforma de la película
+      tipo: a.string(), // Campo para establecer si es pelicula/serie/documental
+      title: a.string(), // Campo para el título de la película
+      genero: a.string(), // Campo para el tema de la película
+      year: a.string(), // Campo para el año de la película
+      platform: a.string(), // Campo para la plataforma de la película
       isSeen: a.boolean(),
       addedBy: a.string(),
       likes: a.integer(),
       voters: a.string(),
-      favorites: a.hasMany("Favorite","idTodo")
-
+      favorites: a.hasMany("Favorite", "idTodo"),
     })
-    
-    .authorization(allow => [allow.authenticated().to(["read","update"]),allow.owner()])
-    ,
-  Favorite: a.model({
-idTodo: a.id(),
-todo: a.belongsTo("Todo","idTodo"),
-idUser: a.id(),
-  })
-  .authorization(allow => [allow.authenticated().to(["read","update"]),allow.owner()]
-),
 
+    .authorization((allow) => [
+      allow.authenticated().to(["read", "update"]),
+      allow.owner(),
+    ]),
+  Favorite: a
+    .model({
+      idTodo: a.id(),
+      todo: a.belongsTo("Todo", "idTodo"),
+      idUser: a.id(),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(["read", "update"]),
+      allow.owner(),
+    ]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -39,7 +42,7 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'userPool',
+    defaultAuthorizationMode: "userPool",
     // API Key is used for a.allow.public() rules
     apiKeyAuthorizationMode: {
       expiresInDays: 30,
