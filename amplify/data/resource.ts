@@ -18,12 +18,20 @@ const schema = a.schema({
       addedBy: a.string(),
       likes: a.integer(),
       voters: a.string(),
-      favorites: a.boolean()
+      favorites: a.hasMany("Favorite","idTodo")
 
     })
-    .authorization(allow => [allow.authenticated().to(["read","update"]),
-    allow.owner() // La regla de autorización
-  ])
+    
+    .authorization(allow => [allow.authenticated().to(["read","update"]),allow.owner()])
+    ,
+  Favorite: a.model({
+idTodo: a.id(),
+todo: a.belongsTo("Todo","idTodo"),
+idUser: a.id(),
+  })
+  .authorization(allow => [allow.authenticated().to(["read","update"]),allow.owner()]
+),
+
 });
 
 export type Schema = ClientSchema<typeof schema>;
