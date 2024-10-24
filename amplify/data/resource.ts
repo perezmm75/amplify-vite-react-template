@@ -14,11 +14,11 @@ const schema = a.schema({
       genero: a.string(), // Campo para el tema de la película
       year: a.string(), // Campo para el año de la película
       platform: a.string(), // Campo para la plataforma de la película
-      isSeen: a.boolean(),
       addedBy: a.string(),
       likes: a.integer(),
       voters: a.string(),
       favorites: a.hasMany("Favorite", "idTodo"),
+      vieweds: a.hasMany("Viewfilm", "idTodo"),
     })
 
     .authorization((allow) => [
@@ -26,6 +26,28 @@ const schema = a.schema({
       allow.owner(),
     ]),
   Favorite: a
+    .model({
+      idTodo: a.id(),
+      todo: a.belongsTo("Todo", "idTodo"),
+      idUser: a.id(),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(["read", "update"]),
+      allow.owner(),
+    ]),
+
+  Viewfilm: a
+    .model({
+      idTodo: a.id(),
+      todo: a.belongsTo("Todo", "idTodo"),
+      idUser: a.id(),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(["read", "update"]),
+      allow.owner(),
+    ]),
+
+  Votelike: a
     .model({
       idTodo: a.id(),
       todo: a.belongsTo("Todo", "idTodo"),
