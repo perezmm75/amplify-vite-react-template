@@ -15,10 +15,7 @@ const schema = a.schema({
       year: a.string(), // Campo para el año de la película
       platform: a.string(), // Campo para la plataforma de la película
       addedBy: a.string(),
-      likes: a.integer(),
-      voters: a.string(),
       favorites: a.hasMany("Favorite", "idTodo"),
-      vieweds: a.hasMany("Viewfilm", "idTodo"),
     })
 
     .authorization((allow) => [

@@ -56,15 +56,26 @@ function FavoritesList() {
     }
   };
 
-  // Eliminar una película de favoritos
-  const removeFavorite = async (favoriteId: string) => {
+// Eliminar una película de favoritos
+const removeFavorite = async (favoriteId: string) => {
+  // Pedir confirmación antes de eliminar
+  const confirmDelete = window.confirm(
+    "¿Estás seguro de que deseas eliminar esta película de tus favoritos?"
+  );
+
+  if (confirmDelete) {
     try {
       await client.models.Favorite.delete({ id: favoriteId });
       await fetchFavorites(); // Actualiza la lista de favoritos
+      window.alert("Película eliminada de favoritos"); // Mensaje de éxito
     } catch (error) {
       console.error("Error al eliminar favorito:", error);
+      window.alert("Error al eliminar favorito"); // Mensaje de error
     }
-  };
+  } else {
+    console.log("Eliminación cancelada por el usuario");
+  }
+};
 
   return (
     <main>
