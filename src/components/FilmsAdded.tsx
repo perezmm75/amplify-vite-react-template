@@ -33,9 +33,10 @@ export default function FilmsAdded() {
   const [showForm, setShowForm] = useState(false);
   const [favorites, setFavorites] = useState<{ [key: string]: boolean }>({});
   const [view, setView] = useState<{ [key: string]: boolean }>({});
+  const [like, setLike] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
-    const fetchViewAndFavorites = async () => {
+    const fetchViewAndFavoritesAndLikefilm = async () => {
       const favoriteMovies = await client.models.Favorite.list({
         filter: { idUser: { eq: user.userId } },
       });
@@ -56,6 +57,16 @@ export default function FilmsAdded() {
         }, {})
       );
 
+      const likeMovies = await client.models.Likefilm.list({
+        filter: { idUser: { eq: user.userId } },
+      });
+      setLike(
+        likeMovies.data.reduce((acc, item) => {
+          acc[item.idTodo] = true;
+          return acc;
+        }, {})
+      );
+
       const subscription = client.models.Todo.observeQuery().subscribe({
         next: async (data) => {
           setTodos([...data.items]);
@@ -63,7 +74,7 @@ export default function FilmsAdded() {
       });
       return () => subscription.unsubscribe(); // Limpiar la suscripción al desmontar el componente
     };
-    fetchViewAndFavorites();
+    fetchViewAndFavoritesAndLikefilm();
   }, [user.userId]);
 
   // Función para obtener el logo según la plataforma
@@ -211,6 +222,51 @@ export default function FilmsAdded() {
     }
   }
 
+  async function markAsLike(id: string) {
+    try {
+      // Consultar si la película ya está marcada como vista
+      const { data: existingLike } = await client.models.Likefilm.list({
+        filter: {
+          idUser: { eq: user.userId },
+          idTodo: { eq: id },
+        },
+      });
+      if (existingLike.length > 0) {
+        const confirmDeleteLike = window.confirm(
+          "¿Estás seguro de que deseas marcar esta película como like"
+        );
+        if (confirmDeleteLike) {
+          // Si el usuario confirma, eliminar como like
+          const likeToDelete = existingLike[0];
+          await client.models.Likefilm.delete({ id: likeToDelete.id });
+          setLike((prevLike) => ({
+            ...prevLike,
+            [id]: false,
+          }));
+          // Mostrar mensaje de éxito
+          window.alert("Película marcada como No like");
+        } else {
+          // Si el usuario cancela, no se hace nada
+          console.log("Eliminación cancelada por el usuario");
+        }
+      } else {
+        // Si no está vista, añadirla
+        await client.models.Viewfilm.create({
+          idTodo: id,
+          idUser: user.userId,
+        });
+        setLike((prevLike) => ({
+          ...prevLike,
+          [id]: true, // Marcar como favorito
+        }));
+        window.alert("Has votado con un like");
+      }
+    } catch (error) {
+      console.error("Error al votar:", error);
+    }
+  }
+
+
   return (
     <div>
       <Table
@@ -261,6 +317,13 @@ export default function FilmsAdded() {
             header: "Acciones",
             cell: (item) => (
               <>
+              {/* Botón para marcar como vista */}
+              <Button
+                  iconName={like[item.id] ? "thumbs-up" : "status-in-progress"}
+                  variant="icon"
+                  ariaLabel="Like"
+                  onClick={() => markAsLike(item.id)}
+                ></Button>
                 {/* Botón para marcar como vista */}
                 <Button
                   iconName={view[item.id] ? "status-positive" : "status-pending"}
@@ -371,5 +434,6 @@ export default function FilmsAdded() {
         </div>
       </Modal>
     </div>
+    
   );
 }

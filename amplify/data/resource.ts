@@ -17,6 +17,7 @@ const schema = a.schema({
       addedBy: a.string(),
       favorites: a.hasMany("Favorite", "idTodo"),
       view: a.hasMany("Viewfilm", "idTodo"),
+      like: a.hasMany("Likefilm", "idTodo"),
     })
 
     .authorization((allow) => [
@@ -35,6 +36,17 @@ const schema = a.schema({
     ]),
 
   Viewfilm: a
+    .model({
+      idTodo: a.id(),
+      todo: a.belongsTo("Todo", "idTodo"),
+      idUser: a.id(),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(["read", "update"]),
+      allow.owner(),
+    ]),
+
+    Likefilm: a
     .model({
       idTodo: a.id(),
       todo: a.belongsTo("Todo", "idTodo"),

@@ -87,12 +87,12 @@ function FavoritesList() {
             header: "Acciones",
             cell: (item) => (
               <>
-                <Button
-                  iconName="star-filled"
+              <Button
+                  iconName="delete-marker"
+                  variant="icon"
+                  ariaLabel="Borrar de favoritos"
                   onClick={() => removeFavorite(item.favoriteId)}
-                >
-                  Eliminar de Favoritos
-                </Button>
+                ></Button>
               </>
             ),
           },
@@ -106,7 +106,7 @@ function FavoritesList() {
             </SpaceBetween>
           </Box>
         }
-        header={<Header>Películas Favoritas</Header>}
+        header={<Header>Lista de favoritos</Header>}
       />
     </main>
   );
