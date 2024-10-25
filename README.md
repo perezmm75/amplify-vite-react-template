@@ -23,3 +23,15 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 ## License
 
 This library is licensed under the MIT-0 License. See the LICENSE file.
+
+Como subir todo el proyecto a GitHub:
+
+Nos vamos a la carpeta del proyecto y ejecutamos estos comandos.
+
+git init
+
+git add .
+
+git commit -m "first commit"
+
+git push

@@ -10,7 +10,6 @@ import Input from "@cloudscape-design/components/input";
 import Select from "@cloudscape-design/components/select";
 import { Modal } from "@cloudscape-design/components";
 import { useAuthenticator } from "@aws-amplify/ui-react";
-import "./FilmsAdded.css"; // para poner la estrella en amarillo
 
 // Importar las imágenes de las plataformas
 import NetflixLogo from "../../public/logos/Netflix.jpg";
@@ -41,7 +40,7 @@ export default function FilmsAdded() {
       });
       setFavorites(
         favoriteMovies.data.reduce((acc, item) => {
-          acc[item.id] = true;
+          acc[item.idTodo] = true;
           return acc;
         }, {})
       );
@@ -114,7 +113,6 @@ export default function FilmsAdded() {
   }
 
   async function markAsFav(id: string) {
-    console.log(favorites);
     try {
       // Consultar si la película ya está en favoritos
       const { data: existingFavorites } = await client.models.Favorite.list({
