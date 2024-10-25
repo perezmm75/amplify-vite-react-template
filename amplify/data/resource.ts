@@ -16,6 +16,7 @@ const schema = a.schema({
       platform: a.string(), // Campo para la plataforma de la película
       addedBy: a.string(),
       favorites: a.hasMany("Favorite", "idTodo"),
+      view: a.hasMany("Viewfilm", "idTodo"),
     })
 
     .authorization((allow) => [
@@ -34,17 +35,6 @@ const schema = a.schema({
     ]),
 
   Viewfilm: a
-    .model({
-      idTodo: a.id(),
-      todo: a.belongsTo("Todo", "idTodo"),
-      idUser: a.id(),
-    })
-    .authorization((allow) => [
-      allow.authenticated().to(["read", "update"]),
-      allow.owner(),
-    ]),
-
-  Votelike: a
     .model({
       idTodo: a.id(),
       todo: a.belongsTo("Todo", "idTodo"),

@@ -32,9 +32,10 @@ export default function FilmsAdded() {
   const [tipo, setTipo] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [favorites, setFavorites] = useState<{ [key: string]: boolean }>({});
+  const [view, setView] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
-    const fetchFavorites = async () => {
+    const fetchViewAndFavorites = async () => {
       const favoriteMovies = await client.models.Favorite.list({
         filter: { idUser: { eq: user.userId } },
       });
@@ -44,16 +45,25 @@ export default function FilmsAdded() {
           return acc;
         }, {})
       );
+
+      const viewMovies = await client.models.Viewfilm.list({
+        filter: { idUser: { eq: user.userId } },
+      });
+      setView(
+        viewMovies.data.reduce((acc, item) => {
+          acc[item.idTodo] = true;
+          return acc;
+        }, {})
+      );
+
+      const subscription = client.models.Todo.observeQuery().subscribe({
+        next: async (data) => {
+          setTodos([...data.items]);
+        },
+      });
+      return () => subscription.unsubscribe(); // Limpiar la suscripción al desmontar el componente
     };
-
-    fetchFavorites();
-
-    const subscription = client.models.Todo.observeQuery().subscribe({
-      next: async (data) => {
-        setTodos([...data.items]);
-      },
-    });
-    return () => subscription.unsubscribe(); // Limpiar la suscripción al desmontar el componente
+    fetchViewAndFavorites();
   }, [user.userId]);
 
   // Función para obtener el logo según la plataforma
@@ -121,9 +131,11 @@ export default function FilmsAdded() {
           idTodo: { eq: id },
         },
       });
-  
+
       if (existingFavorites.length > 0) {
-        const confirmDelete = window.confirm("¿Estás seguro de que deseas eliminar esta película de tus favoritos?");
+        const confirmDelete = window.confirm(
+          "¿Estás seguro de que deseas eliminar esta película de tus favoritos?"
+        );
         if (confirmDelete) {
           // Si el usuario confirma, eliminar el favorito
           const favoriteToDelete = existingFavorites[0];
@@ -154,8 +166,50 @@ export default function FilmsAdded() {
       console.error("Error al marcar como favorito:", error);
     }
   }
-  
-  
+
+  async function markAsView(id: string) {
+    try {
+      // Consultar si la película ya está marcada como vista
+      const { data: existingView } = await client.models.Viewfilm.list({
+        filter: {
+          idUser: { eq: user.userId },
+          idTodo: { eq: id },
+        },
+      });
+      if (existingView.length > 0) {
+        const confirmDeleteView = window.confirm(
+          "¿Estás seguro de que deseas marcar esta película como no vista"
+        );
+        if (confirmDeleteView) {
+          // Si el usuario confirma, eliminar como vista
+          const viewToDelete = existingView[0];
+          await client.models.Viewfilm.delete({ id: viewToDelete.id });
+          setView((prevView) => ({
+            ...prevView,
+            [id]: false,
+          }));
+          // Mostrar mensaje de éxito
+          window.alert("Película marcada como No vista");
+        } else {
+          // Si el usuario cancela, no se hace nada
+          console.log("Eliminación cancelada por el usuario");
+        }
+      } else {
+        // Si no está vista, añadirla
+        await client.models.Viewfilm.create({
+          idTodo: id,
+          idUser: user.userId,
+        });
+        setView((prevView) => ({
+          ...prevView,
+          [id]: true, // Marcar como favorito
+        }));
+        window.alert("Película marcada como vista");
+      }
+    } catch (error) {
+      console.error("Error al marcar como Vista:", error);
+    }
+  }
 
   return (
     <div>
@@ -207,6 +261,13 @@ export default function FilmsAdded() {
             header: "Acciones",
             cell: (item) => (
               <>
+                {/* Botón para marcar como vista */}
+                <Button
+                  iconName={view[item.id] ? "status-positive" : "status-pending"}
+                  variant="icon"
+                  ariaLabel="View"
+                  onClick={() => markAsView(item.id)}
+                ></Button>
                 {/* Botón para marcar como favorito */}
                 <Button
                   iconName={favorites[item.id] ? "star-filled" : "star"}
@@ -229,7 +290,7 @@ export default function FilmsAdded() {
           <Box>
             <SpaceBetween direction="horizontal" size="1">
               <Button onClick={() => setShowForm(true)}>
-                Agregar película
+                +Agregar película
               </Button>
             </SpaceBetween>
           </Box>

@@ -12,35 +12,35 @@ const client = generateClient<Schema>();
 
 function FavoritesList() {
   const { user } = useAuthenticator();
-  const [favorites, setFavorites] = useState<Array<Schema["Favorite"]["type"]>>(
-    []
-  );
-
-  client.models.Favorite.onCreate({
-    filter: { idUser: { eq: user.userId } },
-  }).subscribe({
-    next: async () => fetchFavorites(),
-  });
-
-  client.models.Favorite.onDelete({
-    filter: { idUser: { eq: user.userId } },
-  }).subscribe({
-    next: async () => fetchFavorites(),
-  });
+  const [favorites, setFavorites] = useState<Array<Schema["Favorite"]["type"]>>([]);
 
   useEffect(() => {
     fetchFavorites();
+    const createSubscription = client.models.Favorite.onCreate({
+      filter: { idUser: { eq: user.userId } },
+    }).subscribe({
+      next: async () => fetchFavorites(),
+    });
+
+    const deleteSubscription = client.models.Favorite.onDelete({
+      filter: { idUser: { eq: user.userId } },
+    }).subscribe({
+      next: async () => fetchFavorites(),
+    });
+
+    return () => {
+      createSubscription.unsubscribe();
+      deleteSubscription.unsubscribe();
+    };
   }, [user]);
 
   // Obtener las películas favoritas del usuario
   const fetchFavorites = async () => {
     try {
-      // Consultar todos los favoritos del usuario actual
       const { data: userFavorites } = await client.models.Favorite.list({
         filter: { idUser: { eq: user.userId } },
       });
 
-      // Obtener los detalles de las películas favoritas
       const favoriteMovies = await Promise.all(
         userFavorites.map(async (favorite) => {
           const { data: movie } = await client.models.Todo.get({
@@ -56,49 +56,44 @@ function FavoritesList() {
     }
   };
 
-// Eliminar una película de favoritos
-const removeFavorite = async (favoriteId: string) => {
-  // Pedir confirmación antes de eliminar
-  const confirmDelete = window.confirm(
-    "¿Estás seguro de que deseas eliminar esta película de tus favoritos?"
-  );
-
-  if (confirmDelete) {
-    try {
-      await client.models.Favorite.delete({ id: favoriteId });
-      await fetchFavorites(); // Actualiza la lista de favoritos
-      window.alert("Película eliminada de favoritos"); // Mensaje de éxito
-    } catch (error) {
-      console.error("Error al eliminar favorito:", error);
-      window.alert("Error al eliminar favorito"); // Mensaje de error
+  // Eliminar una película de favoritos
+  const removeFavorite = async (favoriteId: string) => {
+    const confirmDelete = window.confirm("¿Estás seguro de que deseas eliminar esta película de tus favoritos?");
+    if (confirmDelete) {
+      try {
+        await client.models.Favorite.delete({ id: favoriteId });
+        await fetchFavorites();
+        window.alert("Película eliminada de favoritos");
+      } catch (error) {
+        console.error("Error al eliminar favorito:", error);
+        window.alert("Error al eliminar favorito");
+      }
+    } else {
+      console.log("Eliminación cancelada por el usuario");
     }
-  } else {
-    console.log("Eliminación cancelada por el usuario");
-  }
-};
+  };
 
   return (
     <main>
       <Table
         columnDefinitions={[
+          { id: "tipo", header: "Tipo", cell: (item) => item.tipo },
           { id: "title", header: "Título", cell: (item) => item.title },
           { id: "genero", header: "Género", cell: (item) => item.genero },
           { id: "year", header: "Año", cell: (item) => item.year },
-          {
-            id: "platform",
-            header: "Plataforma",
-            cell: (item) => item.platform,
-          },
+          { id: "platform", header: "Plataforma", cell: (item) => item.platform },
           {
             id: "actions",
             header: "Acciones",
             cell: (item) => (
-              <Button
-                iconName="star-filled"
-                onClick={() => removeFavorite(item.favoriteId)}
-              >
-                Eliminar de Favoritos
-              </Button>
+              <>
+                <Button
+                  iconName="star-filled"
+                  onClick={() => removeFavorite(item.favoriteId)}
+                >
+                  Eliminar de Favoritos
+                </Button>
+              </>
             ),
           },
         ]}

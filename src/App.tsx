@@ -20,7 +20,7 @@ function App() {
       <TopNavigation
         identity={{
           href: "#",
-          title: `Películas - ${user?.signInDetails?.loginId || ""}`, // Muestra el email junto al título
+          title: "Películas",
           logo: {
             src: "/Video-film.svg", // Puedes reemplazar esto con el logo que desees
             alt: "Películas",
