@@ -18,6 +18,7 @@ const schema = a.schema({
       favorites: a.hasMany("Favorite", "idTodo"),
       view: a.hasMany("Viewfilm", "idTodo"),
       like: a.hasMany("Likefilm", "idTodo"),
+      likeCount: a.integer(),
     })
 
     .authorization((allow) => [

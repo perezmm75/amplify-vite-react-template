@@ -34,12 +34,24 @@ export default function FilmsAdded() {
   const [favorites, setFavorites] = useState<{ [key: string]: boolean }>({});
   const [view, setView] = useState<{ [key: string]: boolean }>({});
   const [like, setLike] = useState<{ [key: string]: boolean }>({});
+  const [likeCount, setLikeCount] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
-    const fetchViewAndFavoritesAndLikefilm = async () => {
-      const favoriteMovies = await client.models.Favorite.list({
-        filter: { idUser: { eq: user.userId } },
-      });
+    const fetchViewAndFavoritesAndLikefilmAndCounts = async () => {
+      const [favoriteMovies, viewMovies, likeMovies, moviesWithLikes] =
+        await Promise.all([
+          client.models.Favorite.list({
+            filter: { idUser: { eq: user.userId } },
+          }),
+          client.models.Viewfilm.list({
+            filter: { idUser: { eq: user.userId } },
+          }),
+          client.models.Likefilm.list({
+            filter: { idUser: { eq: user.userId } },
+          }),
+          client.models.Todo.list(),
+        ]);
+
       setFavorites(
         favoriteMovies.data.reduce((acc, item) => {
           acc[item.idTodo] = true;
@@ -47,9 +59,6 @@ export default function FilmsAdded() {
         }, {})
       );
 
-      const viewMovies = await client.models.Viewfilm.list({
-        filter: { idUser: { eq: user.userId } },
-      });
       setView(
         viewMovies.data.reduce((acc, item) => {
           acc[item.idTodo] = true;
@@ -57,9 +66,6 @@ export default function FilmsAdded() {
         }, {})
       );
 
-      const likeMovies = await client.models.Likefilm.list({
-        filter: { idUser: { eq: user.userId } },
-      });
       setLike(
         likeMovies.data.reduce((acc, item) => {
           acc[item.idTodo] = true;
@@ -67,17 +73,22 @@ export default function FilmsAdded() {
         }, {})
       );
 
+      setLikeCount(
+        moviesWithLikes.data.reduce((acc, item) => {
+          acc[item.id] = item.likeCount || 0;
+          return acc;
+        }, {})
+      );
+
       const subscription = client.models.Todo.observeQuery().subscribe({
-        next: async (data) => {
-          setTodos([...data.items]);
-        },
+        next: (data) => setTodos(data.items),
       });
-      return () => subscription.unsubscribe(); // Limpiar la suscripción al desmontar el componente
+      return () => subscription.unsubscribe();
     };
-    fetchViewAndFavoritesAndLikefilm();
+
+    fetchViewAndFavoritesAndLikefilmAndCounts();
   }, [user.userId]);
 
-  // Función para obtener el logo según la plataforma
   const getPlatformLogo = (platform: string) => {
     switch (platform) {
       case "Netflix":
@@ -93,7 +104,7 @@ export default function FilmsAdded() {
       case "SkyShowtime":
         return SkyShowtimeLogo;
       default:
-        return null; // Si no tienes un logo para esa plataforma
+        return null;
     }
   };
 
@@ -106,27 +117,27 @@ export default function FilmsAdded() {
         year,
         platform,
         addedBy: user?.signInDetails?.loginId,
+        likeCount,
       });
 
-      // Limpiar los campos después de la presentación
       setTipo("");
       setTitle("");
       setGenero("");
       setYear("");
       setPlatform("");
       setShowForm(false);
+      setLikeCount;
     } catch (error) {
       console.error("Error al crear la película:", error);
     }
   }
 
-  function deleteTodo(id: string, addedBy: string) {
+  async function deleteTodo(id: string, addedBy: string) {
     if (addedBy === user?.signInDetails?.loginId) {
-      const confirmDelete = window.confirm(
-        "¿Estás seguro de que quieres eliminar esta película?"
-      );
-      if (confirmDelete) {
-        client.models.Todo.delete({ id });
+      if (
+        window.confirm("¿Estás seguro de que quieres eliminar esta película?")
+      ) {
+        await client.models.Todo.delete({ id });
       }
     } else {
       window.alert("No puedes borrar los títulos de otros usuarios");
@@ -134,138 +145,96 @@ export default function FilmsAdded() {
   }
 
   async function markAsFav(id: string) {
-    try {
-      // Consultar si la película ya está en favoritos
-      const { data: existingFavorites } = await client.models.Favorite.list({
-        filter: {
-          idUser: { eq: user.userId },
-          idTodo: { eq: id },
-        },
-      });
-
-      if (existingFavorites.length > 0) {
-        const confirmDelete = window.confirm(
-          "¿Estás seguro de que deseas eliminar esta película de tus favoritos?"
-        );
-        if (confirmDelete) {
-          // Si el usuario confirma, eliminar el favorito
-          const favoriteToDelete = existingFavorites[0];
-          await client.models.Favorite.delete({ id: favoriteToDelete.id });
-          setFavorites((prevFavorites) => ({
-            ...prevFavorites,
-            [id]: false, // Cambiar el estado a no favorito
-          }));
-          // Mostrar mensaje de éxito
-          window.alert("Película eliminada de favoritos");
-        } else {
-          // Si el usuario cancela, no se hace nada
-          console.log("Eliminación cancelada por el usuario");
-        }
-      } else {
-        // Si no está en favoritos, añadirlo
-        await client.models.Favorite.create({
-          idTodo: id,
-          idUser: user.userId,
-        });
-        setFavorites((prevFavorites) => ({
-          ...prevFavorites,
-          [id]: true, // Marcar como favorito
-        }));
-        window.alert("Película añadida a favoritos");
+    const { data: existingFavorites } = await client.models.Favorite.list({
+      filter: { idUser: { eq: user.userId }, idTodo: { eq: id } },
+    });
+    if (existingFavorites.length > 0) {
+      if (window.confirm("¿Eliminar esta película de tus favoritos?")) {
+        await client.models.Favorite.delete({ id: existingFavorites[0].id });
+        setFavorites((prev) => ({ ...prev, [id]: false }));
+        window.alert("Película eliminada de favoritos");
       }
-    } catch (error) {
-      console.error("Error al marcar como favorito:", error);
+    } else {
+      await client.models.Favorite.create({ idTodo: id, idUser: user.userId });
+      setFavorites((prev) => ({ ...prev, [id]: true }));
+      window.alert("Película añadida a favoritos");
     }
   }
 
   async function markAsView(id: string) {
-    try {
-      // Consultar si la película ya está marcada como vista
-      const { data: existingView } = await client.models.Viewfilm.list({
-        filter: {
-          idUser: { eq: user.userId },
-          idTodo: { eq: id },
-        },
-      });
-      if (existingView.length > 0) {
-        const confirmDeleteView = window.confirm(
-          "¿Estás seguro de que deseas marcar esta película como no vista"
-        );
-        if (confirmDeleteView) {
-          // Si el usuario confirma, eliminar como vista
-          const viewToDelete = existingView[0];
-          await client.models.Viewfilm.delete({ id: viewToDelete.id });
-          setView((prevView) => ({
-            ...prevView,
-            [id]: false,
-          }));
-          // Mostrar mensaje de éxito
-          window.alert("Película marcada como No vista");
-        } else {
-          // Si el usuario cancela, no se hace nada
-          console.log("Eliminación cancelada por el usuario");
-        }
-      } else {
-        // Si no está vista, añadirla
-        await client.models.Viewfilm.create({
-          idTodo: id,
-          idUser: user.userId,
-        });
-        setView((prevView) => ({
-          ...prevView,
-          [id]: true, // Marcar como favorito
-        }));
-        window.alert("Película marcada como vista");
+    const { data: existingView } = await client.models.Viewfilm.list({
+      filter: { idUser: { eq: user.userId }, idTodo: { eq: id } },
+    });
+    if (existingView.length > 0) {
+      if (window.confirm("¿Marcar esta película como no vista?")) {
+        await client.models.Viewfilm.delete({ id: existingView[0].id });
+        setView((prev) => ({ ...prev, [id]: false }));
+        window.alert("Película marcada como No vista");
       }
-    } catch (error) {
-      console.error("Error al marcar como Vista:", error);
+    } else {
+      await client.models.Viewfilm.create({ idTodo: id, idUser: user.userId });
+      setView((prev) => ({ ...prev, [id]: true }));
+      window.alert("Película marcada como vista");
     }
   }
 
   async function markAsLike(id: string) {
     try {
-      // Consultar si la película ya está marcada como vista
+      // Obtener la película actual para actualizar el contador de likes
+      const currentTodo = await client.models.Todo.get({ id });
+      const currentLikeCount = currentTodo.data?.likeCount || 0;
+      console.log(currentLikeCount); //El error que tenia era que currentLikeCount no podia acceder al valor
+  
+      // Verificar si el usuario ya ha dado like a este ítem
       const { data: existingLike } = await client.models.Likefilm.list({
         filter: {
           idUser: { eq: user.userId },
           idTodo: { eq: id },
         },
       });
+  
       if (existingLike.length > 0) {
-        const confirmDeleteLike = window.confirm(
-          "¿Estás seguro de que deseas marcar esta película como like"
-        );
-        if (confirmDeleteLike) {
-          // Si el usuario confirma, eliminar como like
-          const likeToDelete = existingLike[0];
-          await client.models.Likefilm.delete({ id: likeToDelete.id });
-          setLike((prevLike) => ({
-            ...prevLike,
-            [id]: false,
-          }));
-          // Mostrar mensaje de éxito
-          window.alert("Película marcada como No like");
-        } else {
-          // Si el usuario cancela, no se hace nada
-          console.log("Eliminación cancelada por el usuario");
-        }
+        // Si el usuario ya ha dado like, eliminarlo
+        const likeToDelete = existingLike[0];
+        await client.models.Likefilm.delete({ id: likeToDelete.id });
+  
+        // Reducir el contador de likes globalmente sin permitir valores negativos
+        const newLikeCount = Math.max(0, currentLikeCount - 1);
+        await client.models.Todo.update({ id, likeCount: newLikeCount });
+  
+        // Actualizar la cuenta de likes en el estado local
+        setLikeCount((prevCounts) => ({
+          ...prevCounts,
+          [id]: newLikeCount,
+        }));
+  
+        // Actualizar el estado local de likes
+        setLike((prev) => ({ ...prev, [id]: false }));
       } else {
-        // Si no está vista, añadirla
-        await client.models.Viewfilm.create({
+        // Si no hay like del usuario, agregar uno
+        await client.models.Likefilm.create({
           idTodo: id,
           idUser: user.userId,
         });
-        setLike((prevLike) => ({
-          ...prevLike,
-          [id]: true, // Marcar como favorito
+  
+        // Aumentar el contador de likes globalmente
+        const newLikeCount = currentLikeCount + 1;
+        await client.models.Todo.update({ id, likeCount: newLikeCount });
+  
+        // Actualizar la cuenta de likes en el estado local
+        setLikeCount((prevCounts) => ({
+          ...prevCounts,
+          [id]: newLikeCount,
         }));
-        window.alert("Has votado con un like");
+  
+        // Actualizar el estado local de likes
+        setLike((prev) => ({ ...prev, [id]: true }));
       }
     } catch (error) {
-      console.error("Error al votar:", error);
+      console.error("Error al gestionar like:", error);
     }
   }
-
+  
 
   return (
     <div>
@@ -296,16 +265,22 @@ export default function FilmsAdded() {
             sortingField: "year",
           },
           {
+            id: "likeCount",
+            header: "LikesCount",
+            cell: (item) => likeCount[item.id] || 0,
+            sortingField: "likeCount",
+          },
+          {
             id: "platform",
             header: "Plataforma",
+            sortingField: "platform",
             cell: (item) => (
               <img
                 src={getPlatformLogo(item.platform)}
                 alt={item.platform}
-                style={{ width: "60px", height: "auto" }} // Ajusta el tamaño del logo según prefieras
+                style={{ width: "60px", height: "auto" }}
               />
             ),
-            sortingField: "platform",
           },
           {
             id: "addedBy",
@@ -317,48 +292,51 @@ export default function FilmsAdded() {
             header: "Acciones",
             cell: (item) => (
               <>
-              {/* Botón para marcar como vista */}
-              <Button
+                <Button
                   iconName={like[item.id] ? "thumbs-up" : "status-in-progress"}
                   variant="icon"
                   ariaLabel="Like"
                   onClick={() => markAsLike(item.id)}
-                ></Button>
-                {/* Botón para marcar como vista */}
+                />
                 <Button
-                  iconName={view[item.id] ? "status-positive" : "status-pending"}
+                  iconName={
+                    view[item.id] ? "status-positive" : "status-pending"
+                  }
                   variant="icon"
-                  ariaLabel="View"
+                  ariaLabel="Marcar como visto"
                   onClick={() => markAsView(item.id)}
-                ></Button>
-                {/* Botón para marcar como favorito */}
+                />
                 <Button
                   iconName={favorites[item.id] ? "star-filled" : "star"}
                   variant="icon"
-                  ariaLabel="Fav"
+                  ariaLabel="Marcar como favorito"
                   onClick={() => markAsFav(item.id)}
-                ></Button>
+                />
                 <Button
                   iconName="delete-marker"
                   variant="icon"
-                  ariaLabel="Borrar"
+                  ariaLabel="Eliminar"
                   onClick={() => deleteTodo(item.id, item.addedBy)}
-                ></Button>
+                />
               </>
             ),
           },
         ]}
         items={todos}
-        header={
-          <Box>
-            <SpaceBetween direction="horizontal" size="1">
-              <Button onClick={() => setShowForm(true)}>
-                +Agregar película
-              </Button>
-            </SpaceBetween>
+        loadingText="Cargando tus películas..."
+        empty={
+          <Box textAlign="center">
+            <b>No hay películas registradas</b>
+            <p>Añade una película</p>
           </Box>
         }
+        header={
+          <SpaceBetween size="m">
+            <Button onClick={() => setShowForm(true)}>Nueva película</Button>
+          </SpaceBetween>
+        }
       />
+
       {/* Modal para agregar nuevas películas */}
       <Modal
         onDismiss={() => setShowForm(false)}
@@ -434,6 +412,5 @@ export default function FilmsAdded() {
         </div>
       </Modal>
     </div>
-    
   );
 }
