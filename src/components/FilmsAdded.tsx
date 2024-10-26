@@ -183,7 +183,7 @@ export default function FilmsAdded() {
       // Obtener la película actual para actualizar el contador de likes
       const currentTodo = await client.models.Todo.get({ id });
       const currentLikeCount = currentTodo.data?.likeCount || 0;
-      console.log(currentLikeCount); //El error que tenia era que currentLikeCount no podia acceder al valor
+      console.log(currentLikeCount); //El error que tenia era que currentLikeCount no podia acceder al valor con "currentTodo.likeCount || 0;"
   
       // Verificar si el usuario ya ha dado like a este ítem
       const { data: existingLike } = await client.models.Likefilm.list({
